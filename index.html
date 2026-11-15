@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>グリーンアップル通帳</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#F3F6EE" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101815" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gアップル通帳">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>html{-webkit-text-size-adjust:100%}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: one narrow column like a bankbook page. Big balance on top, three action keys, then ruled history lines. Input happens in a bottom sheet with a thumb-sized number pad. */
+:root{
+  --paper:#F3F6EE; --card:#FFFFFF; --ink:#15231D; --sub:#5C6B64; --line:#D5DDD7;
+  --book:#3E8612; --book-ink:#FFFFFF; --book-soft:#E4F3D2;
+  --brass:#B9800F; --brass-soft:#F7ECCF;
+  --out:#C8452F; --out-soft:#F9E3DE;
+  --key:#E9EEEA; --scrim:rgba(12,24,19,.5);
+  --jp:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic",sans-serif;
+  --num:"Space Grotesk","Zen Maru Gothic","Hiragino Sans",sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --paper:#101815; --card:#18231F; --ink:#E9F0EC; --sub:#9BABA3; --line:#2C3A34;
+  --book:#A9DB4F; --book-ink:#132007; --book-soft:#2A3A17;
+  --brass:#E3B341; --brass-soft:#3A3016;
+  --out:#F07C66; --out-soft:#40211B;
+  --key:#22302B; --scrim:rgba(0,0,0,.6); color-scheme:dark } }
+:root[data-theme="dark"]{
+  --paper:#101815; --card:#18231F; --ink:#E9F0EC; --sub:#9BABA3; --line:#2C3A34;
+  --book:#A9DB4F; --book-ink:#132007; --book-soft:#2A3A17;
+  --brass:#E3B341; --brass-soft:#3A3016;
+  --out:#F07C66; --out-soft:#40211B;
+  --key:#22302B; --scrim:rgba(0,0,0,.6); color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--jp);font-size:16px;line-height:1.6;
+  padding-top:calc(20px + env(safe-area-inset-top,0px));padding-bottom:calc(48px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:focus-visible,input:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+.num{font-family:var(--num);font-variant-numeric:tabular-nums}
+
+header{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+h1{font-size:18px;font-weight:900;margin:0;letter-spacing:.04em;display:flex;align-items:center;gap:8px}
+h1 svg{width:26px;height:26px;flex:none}
+.bal{position:relative;overflow:hidden}
+.bal .deco{position:absolute;right:-18px;top:-14px;width:120px;height:120px;opacity:.18;pointer-events:none}
+.bal>*:not(.deco){position:relative}
+.sync{font-size:12px;color:var(--sub)}
+
+/* balance */
+.bal{background:var(--book);color:var(--book-ink);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.bal .lab{font-size:13px;font-weight:700;opacity:.85}
+.bal .big{font-size:52px;font-weight:700;line-height:1.05;word-break:break-all}
+.bal .row{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px dashed currentColor;padding-top:12px}
+.bal .row .num{font-size:20px;font-weight:700}
+.bal .fix{font-size:13px;font-weight:700;text-decoration:underline;text-underline-offset:3px;color:inherit;padding:6px 0}
+
+/* actions */
+.acts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.act{border-radius:16px;padding:16px 6px;font-weight:900;font-size:17px;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+.act small{font-size:11px;font-weight:500;opacity:.8}
+.act.spend{background:var(--out);color:var(--card)}
+.act.earn{background:var(--brass-soft);color:var(--ink);box-shadow:inset 0 0 0 2px var(--brass)}
+.act.move{background:var(--card);box-shadow:inset 0 0 0 2px var(--line)}
+.act:active{transform:translateY(1px)}
+
+/* month */
+.month{display:flex;gap:10px}
+.month div{flex:1;min-width:0;background:var(--card);border-radius:14px;padding:10px 14px}
+.month .lab{font-size:12px;color:var(--sub)}
+.month .num{font-size:20px;font-weight:700}
+
+/* start */
+.start{background:var(--card);border:2px dashed var(--book);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.start h2{margin:0;font-size:17px;font-weight:900}
+.start p{margin:0;font-size:14px;color:var(--sub)}
+.start .two{display:flex;gap:10px;flex-wrap:wrap}
+.pill{background:var(--book);color:var(--book-ink);border-radius:999px;padding:10px 18px;font-weight:700;font-size:15px}
+.pill.done{background:var(--book-soft);color:var(--ink)}
+
+/* history */
+.hist h2{font-size:14px;font-weight:700;color:var(--sub);margin:0 0 4px;letter-spacing:.08em}
+.day{font-size:12px;color:var(--sub);padding:14px 0 4px;border-bottom:1px solid var(--line)}
+.ent{display:block;width:100%;text-align:left;border-bottom:1px solid var(--line);padding:10px 0}
+.ent .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.ent .what{min-width:0;font-weight:700;overflow-wrap:anywhere}
+.ent .what small{display:block;font-weight:500;font-size:12px;color:var(--sub)}
+.ent .amt{font-size:19px;font-weight:700;white-space:nowrap}
+.amt.minus{color:var(--out)} .amt.plus{color:var(--book)} .amt.flat{color:var(--sub)}
+.ent .del{margin-top:8px;display:flex;gap:10px;align-items:center;font-size:13px;color:var(--sub)}
+.ent .del span{flex:1}
+.delbtn{background:var(--out-soft);color:var(--out);font-weight:700;border-radius:10px;padding:8px 14px;font-size:14px}
+.empty{color:var(--sub);font-size:14px;padding:16px 0}
+.more{align-self:center;color:var(--sub);font-size:14px;text-decoration:underline;padding:10px}
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:var(--scrim);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.sheet{background:var(--card);width:100%;max-width:480px;border-radius:22px 22px 0 0;max-height:100%;overflow-y:auto;
+  padding:16px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+  display:flex;flex-direction:column;gap:12px}
+.sheet .head{display:flex;justify-content:space-between;align-items:center}
+.sheet h2{margin:0;font-size:19px;font-weight:900}
+.close{font-size:15px;color:var(--sub);padding:6px 10px}
+.amtbox{font-size:44px;font-weight:700;text-align:right;border-bottom:3px solid var(--ink);padding:0 4px;line-height:1.2;min-height:56px}
+.amtbox.zero{color:var(--sub)}
+.hint{font-size:13px;color:var(--sub);margin:-6px 0 0;min-height:20px}
+.seg{display:flex;gap:8px;flex-wrap:wrap}
+.chip{background:var(--key);border-radius:999px;padding:9px 14px;font-size:15px;font-weight:700}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--card)}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pad button{background:var(--key);border-radius:14px;font-family:var(--num);font-size:26px;font-weight:700;padding:12px 0}
+.pad button:active{background:var(--line)}
+.memo{width:100%;font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.save{background:var(--book);color:var(--book-ink);border-radius:16px;padding:16px;font-size:19px;font-weight:900}
+.save:disabled{opacity:.4}
+@media (prefers-reduced-motion:no-preference){ .sheet{animation:up .18s ease-out} @keyframes up{from{transform:translateY(24px);opacity:.6}} }
+
+.backup{font-size:14px;color:var(--sub)}
+.backup summary{cursor:pointer;padding:8px 0}
+.backup .box{display:flex;flex-direction:column;gap:10px;padding-top:6px}
+.backup textarea{width:100%;min-height:90px;font:12px/1.4 ui-monospace,monospace;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px}
+.backup .two{display:flex;gap:10px;flex-wrap:wrap}
+.backup button{background:var(--key);border-radius:999px;padding:9px 16px;font-weight:700;font-size:14px;color:var(--ink)}
+.backup button.warn{background:var(--out-soft);color:var(--out)}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 9c-3-3-10-2-10 6 0 7 4 13 7 13 1.500 0 2-.8 3-.8s1.500.8 3 .8c3 0 7-6 7-13 0-8-7-9-10-6z" fill="var(--book)"/><path d="M16 9c0-3 1-5 3-6" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round"/><path d="M18 6c2-3 6-3 7-2-1 3-4 4-7 2z" fill="var(--book)"/></svg>グリーンアップル通帳</h1>
+    <span class="sync" id="sync">このスマホに保存</span>
+  </header>
+
+  <section class="bal" aria-label="残りのお金">
+    <svg class="deco" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 9c-3-3-10-2-10 6 0 7 4 13 7 13 1.500 0 2-.8 3-.8s1.500.8 3 .8c3 0 7-6 7-13 0-8-7-9-10-6z" fill="currentColor"/><path d="M16 9c0-3 1-5 3-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M18 6c2-3 6-3 7-2-1 3-4 4-7 2z" fill="currentColor"/></svg>
+    <div>
+      <div class="lab">さいふの残り</div>
+      <div class="big num" id="walletBal">¥0</div>
+    </div>
+    <div class="row">
+      <span class="lab">銀行の残り</span>
+      <span class="num" id="bankBal">¥0</span>
+    </div>
+    <button class="fix" id="fixBtn" type="button">数えたらちがった → 残りを合わせる</button>
+  </section>
+
+  <section class="start" id="start" hidden>
+    <h2>はじめに、いまの金額を入れよう</h2>
+    <p>さいふの中身を数える。銀行は通帳かアプリの数字を見る。ここだけやれば準備OK。</p>
+    <div class="two">
+      <button class="pill" id="startWallet" type="button">さいふを入れる</button>
+      <button class="pill" id="startBank" type="button">銀行を入れる</button>
+    </div>
+  </section>
+
+  <nav class="acts" aria-label="記録する">
+    <button class="act spend" id="actSpend" type="button">つかった<small>買いもの</small></button>
+    <button class="act earn" id="actEarn" type="button">もらった<small>お仕事・お祝い</small></button>
+    <button class="act move" id="actMove" type="button">おろした<small>銀行 ↔ さいふ</small></button>
+  </nav>
+
+  <section class="month" aria-label="今月">
+    <div><div class="lab" id="mSpendLab">今月つかった</div><div class="num" id="mSpend">¥0</div></div>
+    <div><div class="lab">今月もらった</div><div class="num" id="mEarn">¥0</div></div>
+  </section>
+
+  <section class="hist">
+    <h2>きろく</h2>
+    <div id="list"></div>
+  </section>
+  <button class="more" id="more" type="button" hidden>もっと前を見る</button>
+  <details class="backup">
+    <summary>バックアップ（きろくは、このスマホの中だけ）</summary>
+    <div class="box">
+      <p style="margin:0">月に1回くらい「コピーする」を押して、メモ帳やLINEの自分あてに貼っておくと、スマホがこわれても安心。</p>
+      <div class="two"><button type="button" id="bkCopy">コピーする</button><button type="button" id="bkShow">もどす（貼りつけ）</button></div>
+      <textarea id="bkText" hidden placeholder="ここにバックアップを貼る"></textarea>
+      <div class="two"><button type="button" class="warn" id="bkLoad" hidden>この内容でおきかえる</button></div>
+      <p id="bkMsg" style="margin:0;min-height:20px" aria-live="polite"></p>
+    </div>
+  </details>
+</div>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="head">
+      <h2 id="sheetTitle">つかった</h2>
+      <button class="close" id="closeBtn" type="button">やめる</button>
+    </div>
+    <div class="amtbox num zero" id="amtBox" aria-live="polite">¥0</div>
+    <p class="hint" id="hint"></p>
+    <div class="seg" id="pocketSeg"></div>
+    <div class="seg" id="catSeg"></div>
+    <div class="seg" id="daySeg"></div>
+    <input class="memo" id="dayPick" type="date" aria-label="日にちを選ぶ" hidden>
+    <div class="pad" id="pad"></div>
+    <input class="memo" id="memo" type="text" maxlength="30" placeholder="メモ（書かなくてもOK）" autocomplete="off">
+    <button class="save" id="saveBtn" type="button" disabled>きろくする</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var LS = "okozukai-tsucho-v1";
+  var state = { entries: [] };
+  var shown = 40;
+  var openId = null;
+  var $ = function(id){ return document.getElementById(id); };
+
+  /* ---------- money logic ---------- */
+  function yen(n){ return (n < 0 ? "−¥" : "¥") + Math.abs(n).toLocaleString("ja-JP"); }
+  function delta(e, pocket){
+    if (e.kind === "spend") return e.pocket === pocket ? -e.amt : 0;
+    if (e.kind === "earn")  return e.pocket === pocket ?  e.amt : 0;
+    if (e.kind === "adjust")return e.pocket === pocket ?  e.amt : 0;
+    if (e.kind === "move")  return e.from === pocket ? -e.amt : e.amt;
+    return 0;
+  }
+  function balance(pocket){
+    var s = 0;
+    for (var i = 0; i < state.entries.length; i++) s += delta(state.entries[i], pocket);
+    return s;
+  }
+  function dayStr(d){
+    return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+  }
+  function today(off){ var d = new Date(); d.setDate(d.getDate() - (off || 0)); return dayStr(d); }
+  var WD = ["日","月","火","水","木","金","土"];
+  function dayLabel(s){
+    if (s === today(0)) return "きょう";
+    if (s === today(1)) return "きのう";
+    var p = s.split("-"); var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    return (+p[1]) + "月" + (+p[2]) + "日（" + WD[d.getDay()] + "）";
+  }
+  var PN = { wallet: "さいふ", bank: "銀行" };
+
+  /* ---------- storage: this device first, account storage when available ---------- */
+  var docRef = null, writing = false, dirty = false;
+  function setSync(t){ $("sync").textContent = t; }
+  function loadLocal(){
+    try { var s = localStorage.getItem(LS); if (s) { var o = JSON.parse(s); if (o && Array.isArray(o.entries)) state = o; } } catch (e) {}
+  }
+  function saveLocal(){ try { localStorage.setItem(LS, JSON.stringify(state)); } catch (e) {} }
+  function push(){
+    if (!docRef) return;
+    if (writing) { dirty = true; return; }
+    writing = true; setSync("保存中…");
+    docRef.set({ entries: state.entries, updated: Date.now() }).then(function(){
+      setSync("保存ずみ");
+    }, function(){
+      setSync("この機械にだけ保存（つながったら、もう一度きろく）");
+    }).then(function(){
+      writing = false;
+      if (dirty) { dirty = false; push(); }
+    });
+  }
+  function commit(){ saveLocal(); render(); push(); }
+
+  function connect(){
+    if (!window.claude || !window.claude.use) return;
+    Promise.all([window.claude.use("db"), window.claude.use("user")]).then(function(r){
+      var db = r[0], user = r[1];
+      if (!db || !user) return;
+      return user.id().then(function(uid){
+        if (!uid) return;
+        var ref = db.doc("data/users/" + uid + "/book");
+        var timer = setTimeout(function(){ setSync("つながるのを待っています（この機械には保存ずみ）"); }, 10000);
+        ref.onSnapshot(function(snap){
+          if (snap.metadata.hasPendingWrites) return;
+          if (!snap.metadata.fromCache) clearTimeout(timer);
+          docRef = ref;
+          if (snap.exists) {
+            var d = snap.data();
+            if (d && Array.isArray(d.entries) && !writing) {
+              state.entries = JSON.parse(JSON.stringify(d.entries));
+              saveLocal(); render();
+            }
+            if (!snap.metadata.fromCache) setSync("保存ずみ");
+          } else if (!snap.metadata.fromCache) {
+            if (state.entries.length) push(); else setSync("保存ずみ");
+          }
+        }, function(){
+          clearTimeout(timer); docRef = null; setSync("この機械にだけ保存");
+        });
+      });
+    }).catch(function(){});
+  }
+
+  /* ---------- render ---------- */
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function title(e){
+    if (e.kind === "spend") return e.cat || "つかった";
+    if (e.kind === "earn") return e.cat || "もらった";
+    if (e.kind === "move") return e.from === "bank" ? "銀行からおろした" : "銀行にあずけた";
+    return "残りを合わせた";
+  }
+  function sub(e){
+    var s = e.kind === "move" ? "" : (e.kind === "spend" ? PN[e.pocket] + "から" : e.kind === "earn" ? PN[e.pocket] + "に" : PN[e.pocket]);
+    if (e.memo) s += (s ? "・" : "") + e.memo;
+    return s;
+  }
+  function amtHtml(e){
+    if (e.kind === "spend") return '<span class="amt num minus">−' + yen(e.amt).replace("−","") + "</span>";
+    if (e.kind === "earn") return '<span class="amt num plus">＋' + yen(e.amt) + "</span>";
+    if (e.kind === "move") return '<span class="amt num flat">' + yen(e.amt) + "</span>";
+    return '<span class="amt num flat">' + (e.amt >= 0 ? "＋" : "") + yen(e.amt) + "</span>";
+  }
+  function render(){
+    $("walletBal").textContent = yen(balance("wallet"));
+    $("bankBal").textContent = yen(balance("bank"));
+
+    var hasW = false, hasB = false, ym = today(0).slice(0, 7), ms = 0, me = 0;
+    state.entries.forEach(function(e){
+      if (delta(e, "wallet")) hasW = true; if (delta(e, "bank")) hasB = true;
+      if (e.day.slice(0, 7) === ym) { if (e.kind === "spend") ms += e.amt; if (e.kind === "earn") me += e.amt; }
+    });
+    $("start").hidden = hasW && hasB;
+    $("startWallet").className = "pill" + (hasW ? " done" : "");
+    $("startWallet").textContent = hasW ? "さいふ：入れた" : "さいふを入れる";
+    $("startBank").className = "pill" + (hasB ? " done" : "");
+    $("startBank").textContent = hasB ? "銀行：入れた" : "銀行を入れる";
+    $("mSpendLab").textContent = (+ym.slice(5)) + "月つかった";
+    $("mSpend").textContent = yen(ms);
+    $("mEarn").textContent = yen(me);
+
+    var list = state.entries.slice().sort(function(a, b){ return a.day === b.day ? b.ts - a.ts : (a.day < b.day ? 1 : -1); });
+    var html = "", last = "";
+    list.slice(0, shown).forEach(function(e){
+      if (e.day !== last) { html += '<div class="day">' + dayLabel(e.day) + "</div>"; last = e.day; }
+      var s = sub(e);
+      html += '<div class="ent"><button class="ent" style="border:0;padding:0" type="button" data-id="' + esc(e.id) + '" aria-expanded="' + (openId === e.id) + '">' +
+        '<span class="top"><span class="what">' + esc(title(e)) + (s ? "<small>" + esc(s) + "</small>" : "") + "</span>" + amtHtml(e) + "</span></button>" +
+        (openId === e.id ? '<div class="del"><span>まちがえた？</span><button class="delbtn" type="button" data-del="' + esc(e.id) + '">このきろくを消す</button></div>' : "") +
+        "</div>";
+    });
+    $("list").innerHTML = html || '<p class="empty">まだ何もないよ。買いものをしたら「つかった」を押してね。きろくが、りんごの木の最初の1こ。</p>';
+    $("more").hidden = list.length <= shown;
+  }
+
+  /* ---------- input sheet ---------- */
+  var MODES = {
+    spend: { title: "つかった", pockets: [["wallet","さいふから"],["bank","銀行から"]], cats: ["おやつ・ごはん","あそび","本・文具","服・もの","そのほか"] },
+    earn:  { title: "もらった", pockets: [["wallet","さいふに"],["bank","銀行に"]], cats: ["お仕事","お祝い・お年玉","そのほか"] },
+    move:  { title: "お金をうつす", pockets: [["bank","銀行 → さいふ（おろした）"],["wallet","さいふ → 銀行（あずけた）"]], cats: [] },
+    adjust:{ title: "残りを合わせる", pockets: [["wallet","さいふ"],["bank","銀行"]], cats: [] }
+  };
+  var f = null;
+  function chips(box, items, cur, key){
+    box.innerHTML = items.map(function(it){
+      var v = Array.isArray(it) ? it[0] : it, l = Array.isArray(it) ? it[1] : it;
+      return '<button class="chip" type="button" data-' + key + '="' + esc(v) + '" aria-pressed="' + (v === cur) + '">' + esc(l) + "</button>";
+    }).join("");
+    box.hidden = !items.length;
+  }
+  function drawSheet(){
+    var m = MODES[f.mode];
+    $("sheetTitle").textContent = m.title;
+    $("amtBox").textContent = yen(f.amt);
+    $("amtBox").className = "amtbox num" + (f.amt ? "" : " zero");
+    chips($("pocketSeg"), m.pockets, f.pocket, "pocket");
+    chips($("catSeg"), m.cats, f.cat, "cat");
+    var other = f.day !== today(0) && f.day !== today(1);
+    chips($("daySeg"), f.mode === "adjust" ? [] : [[today(0),"きょう"],[today(1),"きのう"],["pick", other ? dayLabel(f.day) : "ほかの日"]], (other || f.pick) ? "pick" : f.day, "day");
+    $("dayPick").hidden = !(f.pick && f.mode !== "adjust");
+    $("dayPick").max = today(0);
+    $("dayPick").value = f.day;
+    var hint = "";
+    if (f.mode === "adjust") {
+      var now = balance(f.pocket);
+      hint = "いま本当にある金額を入れてね。きろくでは " + yen(now) + "。";
+    } else if (f.mode === "spend" && f.amt > balance(f.pocket)) {
+      hint = PN[f.pocket] + "の残り（" + yen(balance(f.pocket)) + "）より多いよ。合ってる？";
+    } else if (f.mode === "move" && f.amt > balance(f.pocket)) {
+      hint = PN[f.pocket] + "の残り（" + yen(balance(f.pocket)) + "）より多いよ。合ってる？";
+    }
+    $("hint").textContent = hint;
+    $("saveBtn").disabled = f.mode === "adjust" ? !f.touched : f.amt <= 0;
+    $("saveBtn").textContent = f.mode === "adjust" ? "この金額に合わせる" : "きろくする";
+  }
+  function openSheet(mode, pocket){
+    var m = MODES[mode];
+    f = { mode: mode, amt: 0, pocket: pocket || m.pockets[0][0], cat: m.cats[0] || "", day: today(0), pick: false, touched: false };
+    $("memo").value = "";
+    $("memo").hidden = mode === "adjust";
+    $("scrim").hidden = false;
+    drawSheet();
+  }
+  function closeSheet(){ $("scrim").hidden = true; f = null; }
+  function save(){
+    if (!f) return;
+    var e = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ts: Date.now(), day: f.day, kind: f.mode };
+    var memo = $("memo").value.trim();
+    if (memo) e.memo = memo;
+    if (f.mode === "move") { e.from = f.pocket; e.amt = f.amt; }
+    else if (f.mode === "adjust") {
+      e.pocket = f.pocket; e.amt = f.amt - balance(f.pocket);
+      if (e.amt === 0) { closeSheet(); return; }
+    } else { e.pocket = f.pocket; e.amt = f.amt; e.cat = f.cat; }
+    state.entries.push(e);
+    closeSheet(); commit();
+  }
+
+  $("pad").innerHTML = ["1","2","3","4","5","6","7","8","9","00","0","けす"].map(function(k){
+    return '<button type="button" data-k="' + k + '"' + (k === "けす" ? ' style="font-family:var(--jp);font-size:17px"' : "") + ">" + k + "</button>";
+  }).join("");
+  $("pad").addEventListener("click", function(ev){
+    var b = ev.target.closest("button"); if (!b || !f) return;
+    var k = b.getAttribute("data-k"), s = String(f.amt);
+    if (k === "けす") s = s.slice(0, -1); else s = s + k;
+    if (s.length > 7) return;
+    f.amt = parseInt(s || "0", 10) || 0; f.touched = true;
+    drawSheet();
+  });
+  $("scrim").addEventListener("click", function(ev){
+    if (ev.target === $("scrim")) { closeSheet(); return; }
+    var b = ev.target.closest(".chip"); if (!b || !f) return;
+    if (b.hasAttribute("data-pocket")) f.pocket = b.getAttribute("data-pocket");
+    if (b.hasAttribute("data-cat")) f.cat = b.getAttribute("data-cat");
+    if (b.hasAttribute("data-day")) {
+      var v = b.getAttribute("data-day");
+      if (v === "pick") { f.pick = true; }
+      else { f.day = v; f.pick = false; }
+    }
+    drawSheet();
+    if (f.pick) { try { $("dayPick").focus(); if ($("dayPick").showPicker) $("dayPick").showPicker(); } catch (e) {} }
+  });
+  $("dayPick").addEventListener("change", function(){
+    var v = $("dayPick").value;
+    if (!f || !/^\d{4}-\d{2}-\d{2}$/.test(v) || v > today(0)) return;
+    f.day = v; drawSheet();
+  });
+  $("closeBtn").addEventListener("click", closeSheet);
+  $("saveBtn").addEventListener("click", save);
+  document.addEventListener("keydown", function(ev){
+    if (!f) return;
+    if (ev.key === "Escape") { closeSheet(); return; }
+    var t = ev.target;
+    if (t && (t.id === "memo" || t.id === "dayPick")) return;
+    if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    var s = String(f.amt);
+    if (/^[0-9]$/.test(ev.key)) s += ev.key;
+    else if (ev.key === "Backspace" || ev.key === "Delete") s = s.slice(0, -1);
+    else if (ev.key === "Enter" && !(t && t.tagName === "BUTTON")) { if (!$("saveBtn").disabled) save(); ev.preventDefault(); return; }
+    else return;
+    ev.preventDefault();
+    if (s.length > 7) return;
+    f.amt = parseInt(s || "0", 10) || 0; f.touched = true;
+    drawSheet();
+  });
+
+  $("actSpend").addEventListener("click", function(){ openSheet("spend"); });
+  $("actEarn").addEventListener("click", function(){ openSheet("earn"); });
+  $("actMove").addEventListener("click", function(){ openSheet("move"); });
+  $("fixBtn").addEventListener("click", function(){ openSheet("adjust", "wallet"); });
+  $("startWallet").addEventListener("click", function(){ openSheet("adjust", "wallet"); });
+  $("startBank").addEventListener("click", function(){ openSheet("adjust", "bank"); });
+  $("more").addEventListener("click", function(){ shown += 40; render(); });
+  $("list").addEventListener("click", function(ev){
+    var d = ev.target.closest("[data-del]");
+    if (d) {
+      var id = d.getAttribute("data-del");
+      state.entries = state.entries.filter(function(e){ return e.id !== id; });
+      openId = null; commit(); return;
+    }
+    var b = ev.target.closest("[data-id]"); if (!b) return;
+    var id2 = b.getAttribute("data-id");
+    openId = openId === id2 ? null : id2; render();
+  });
+
+  /* ---------- backup ---------- */
+  $("bkCopy").addEventListener("click", function(){
+    var t = JSON.stringify({ app: "green-apple-tsucho", entries: state.entries });
+    $("bkText").hidden = false; $("bkText").value = t; $("bkText").select();
+    var ok = function(){ $("bkMsg").textContent = "コピーしたよ。メモ帳などに貼ってね。"; };
+    var ng = function(){ $("bkMsg").textContent = "下の文字を全部えらんで、コピーしてね。"; };
+    try { navigator.clipboard.writeText(t).then(ok, ng); } catch (e) { ng(); }
+  });
+  $("bkShow").addEventListener("click", function(){
+    $("bkText").hidden = false; $("bkText").value = ""; $("bkLoad").hidden = false; $("bkText").focus();
+    $("bkMsg").textContent = "貼ってから「この内容でおきかえる」を押す。今のきろくは消えるので注意。";
+  });
+  $("bkLoad").addEventListener("click", function(){
+    try {
+      var o = JSON.parse($("bkText").value);
+      if (!o || !Array.isArray(o.entries)) throw 0;
+      var okAll = o.entries.every(function(e){ return e && typeof e.id === "string" && typeof e.day === "string" && typeof e.amt === "number" && /^(spend|earn|move|adjust)$/.test(e.kind); });
+      if (!okAll) throw 0;
+      state.entries = o.entries; commit();
+      $("bkLoad").hidden = true; $("bkText").hidden = true;
+      $("bkMsg").textContent = "もどしたよ（" + o.entries.length + "件）。";
+    } catch (e) { $("bkMsg").textContent = "読めなかった。コピーした文字を、全部そのまま貼ってね。"; }
+  });
+  if ("serviceWorker" in navigator) { navigator.serviceWorker.register("sw.js").catch(function(){}); }
+  if (navigator.storage && navigator.storage.persist) { navigator.storage.persist().catch(function(){}); }
+
+  loadLocal(); render(); connect();
+})();
+</script>
+</body>
+</html>
